@@ -1,0 +1,14 @@
+{
+  "name": "nodejsondb",
+  "version": "1.0.0",
+  "description": "JSON based database",
+  "main": "src/app.js",
+  "scripts": {
+    "test": "node tests.js"
+  },
+  "author": "QuantumSheep",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^9.6.6"
+  }
+}
