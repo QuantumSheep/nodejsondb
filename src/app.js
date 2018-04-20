@@ -17,7 +17,7 @@ module.exports = class JsonDb {
                     if (err) console.log(err);
 
                     /**
-                     * @type {{name: string, properties: {name: string, type: string}}[]}
+                     * @type {{[key: string]: {properties: {[key: string]: any}}}
                      */
                     this.definitions = JSON.parse(data);
 
@@ -28,31 +28,21 @@ module.exports = class JsonDb {
     }
 
     /**
-     * Create a new table
      * 
-     * @param {string} name 
-     * @param {{name: string, type: string}[]} properties 
+     * @param {string} table 
+     * @param {{[key: string]: any}} data 
      */
-    createTable(name, properties) {
-        this.tableExists(name, res => {
-            if (!res) {
-                this.definitions.push({
-                    name,
-                    properties
-                });
-
-                this.pushTablesDefinitions();
-            } else {
-                console.log(`Table ${name} already exists.`);
-
-                return false;
-            }
-        });
-    }
-
-    pushTablesDefinitions() {
-        fs.writeFile(`${this.location}/tables-definitions.json`, JSON.stringify(this.definitions), (err) => {
-            if (err) console.log(err);
+    insert(table, data) {
+        return new Promise((resolve, reject) => {
+            this.tableExists(table, res => {
+                if (res) {
+                    for (let i in data) {
+                        if(!(i in this.definitions[table].properties)) reject(`Wrong column ${i} for table ${table}.`);
+                    }
+                } else {
+                    reject("Table doesn't exists!");
+                }
+            });
         });
     }
 
@@ -63,7 +53,7 @@ module.exports = class JsonDb {
      * @param {(res: boolean) => void} callback 
      */
     tableExists(name, callback) {
-        if(this.definitions.length == 0) return callback(false);
+        if (this.definitions.length == 0) return callback(false);
 
         this.definitions.forEach((table, i) => {
             if (table.name == name) return callback(true);

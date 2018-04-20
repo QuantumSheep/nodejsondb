@@ -3,6 +3,6 @@ module.exports = {
         "/tables"
     ],
     files: {
-        "/tables-definitions.json": "[]"
+        "/tables-definitions.json": "{}"
     }
 };
