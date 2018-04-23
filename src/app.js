@@ -8,8 +8,8 @@ module.exports = class JsonDb {
      * 
      * @param {string} location The folder's path containing the database
      */
-    constructor(location) {
-        this.wait = new Promise((resolve, reject) => {
+    init(location) {
+        return new Promise(resolve => {
             this.location = location;
 
             this.generateDatabase().then(() => {
@@ -28,6 +28,7 @@ module.exports = class JsonDb {
     }
 
     /**
+     * Check the data and insert the new row
      * 
      * @param {string} table 
      * @param {{[key: string]: any}} data 
@@ -36,11 +37,66 @@ module.exports = class JsonDb {
         return new Promise((resolve, reject) => {
             this.tableExists(table, res => {
                 if (res) {
-                    for (let i in data) {
-                        if(!(i in this.definitions[table].properties)) reject(`Wrong column ${i} for table ${table}.`);
+                    const row = this.definitions[table].properties;
+
+                    for(let i in row) {
+                        row[i] = null;
                     }
+
+                    for (let i in data) {
+                        if (!(i in row)) {
+                            return reject(`Unknown column '${i}' for table '${table}'.`);
+                        }
+
+                        row[i] = data[i];
+                    }
+
+                    this.push(table, row).then(() => {
+                        resolve(true);
+                    }).catch(err => {
+                        reject(err);
+                    });
                 } else {
-                    reject("Table doesn't exists!");
+                    return reject(`Table '${table}' doesn't exists!`);
+                }
+            });
+        });
+    }
+
+    /**
+     * Insert the new row without checking
+     * 
+     * /!\ Use .insert() instead /!\
+     * 
+     * @param {string} table 
+     * @param {{[key: string]: any}} data 
+     */
+    push(table, row) {
+        return new Promise((resolve, reject) => {
+            fs.exists(`${this.location}/tables/${table}.json`, exists => {
+                if (exists) {
+                    fs.readFile(`${this.location}/tables/${table}.json`, (err, data) => {
+                        if (err) return reject(err);
+
+                        /**
+                         * @type {{[key: string]: any}[]}
+                         */
+                        const rows = JSON.parse(data);
+
+                        rows.push(row)
+
+                        fs.writeFile(`${this.location}/tables/${table}.json`, JSON.stringify(rows), err => {
+                            if (err) return reject(err);
+
+                            return resolve(true);
+                        });
+                    });
+                } else {
+                    fs.writeFile(`${this.location}/tables/${table}.json`, JSON.stringify([row]), err => {
+                        if (err) return reject(err);
+
+                        return resolve(true);
+                    });
                 }
             });
         });
@@ -53,13 +109,15 @@ module.exports = class JsonDb {
      * @param {(res: boolean) => void} callback 
      */
     tableExists(name, callback) {
-        if (this.definitions.length == 0) return callback(false);
+        const deflength = Object.keys(this.definitions).length;
 
-        this.definitions.forEach((table, i) => {
-            if (table.name == name) return callback(true);
+        if (deflength == 0) return callback(false);
+        let j = 0;
 
-            if (i + 1 == this.definitions.length) return callback(false);
-        });
+        for (let i in this.definitions) {
+            if (i == name) return callback(true);
+            if (++j == deflength) return callback(false);
+        }
     }
 
     /**
